@@ -1,9 +1,27 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
+	"net/http"
+	"log"
 )
 
 func main(){
-	fmt.Println("Hello, World!")
+
+	// Create http handler
+	serveMux := http.NewServeMux()
+
+
+	// Create server
+	server := http.Server{
+		Addr: ":8080",
+		Handler: serveMux,
+	}
+
+	// Start server
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal("Couldn't start http server")
+	}
+
 }
