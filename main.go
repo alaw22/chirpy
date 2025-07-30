@@ -15,22 +15,18 @@ func main(){
 
 	// Create http handler
 	serveMux := http.NewServeMux()
-
-	// Create FileServer
-	fileServerHandler := http.FileServer(http.Dir(rootPath))
 	
 	// Handle root requests
-	serveMux.Handle("/",fileServerHandler)
-
+	serveMux.Handle("/",http.FileServer(http.Dir(rootPath)))
 
 	// Create server
-	server := http.Server{
+	server := &http.Server{
 		Addr: ":" + port,
 		Handler: serveMux,
 	}
 
 	fmt.Printf("Serving files from %s at port %s\n",rootPath,port)
-	
+
 	// Start server
 	err := server.ListenAndServe()
 	if err != nil {
