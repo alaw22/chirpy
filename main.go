@@ -6,6 +6,16 @@ import (
 	"log"
 )
 
+func readinessHandler(w http.ResponseWriter, req *http.Request){
+	
+	body := "OK"
+
+	w.Header().Set("Content-Type","text/plain; charset=utf-8")
+	w.WriteHeader(200)	
+	w.Write([]byte(body))
+
+}
+
 func main(){
 
 	const (
@@ -16,8 +26,11 @@ func main(){
 	// Create http handler
 	serveMux := http.NewServeMux()
 	
-	// Handle root requests
-	serveMux.Handle("/",http.FileServer(http.Dir(rootPath)))
+	// Handle requests for files on server. Mapping "/" to the root "."
+	serveMux.Handle("/app/",http.StripPrefix("/app",http.FileServer(http.Dir(rootPath))))
+
+	// Register a handler
+	serveMux.HandleFunc("/healthz", readinessHandler)
 
 	// Create server
 	server := &http.Server{
@@ -30,7 +43,7 @@ func main(){
 	// Start server
 	err := server.ListenAndServe()
 	if err != nil {
-		log.Fatal("Couldn't start http server")
+		log.Fatal(err)
 	}
 
 
