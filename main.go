@@ -61,9 +61,9 @@ func main(){
 	serveMux.Handle("/app/",apiCfg.middlewareMetricsInc(fileServerHandler))
 
 	// Register newly defined handlers
-	serveMux.HandleFunc("/healthz", readinessHandler)
-	serveMux.HandleFunc("/metrics", apiCfg.serverHitsHandler)
-	serveMux.HandleFunc("/reset", apiCfg.resetServerHitsHandler)
+	serveMux.HandleFunc("GET /healthz", readinessHandler)
+	serveMux.HandleFunc("GET /metrics", apiCfg.serverHitsHandler)
+	serveMux.HandleFunc("POST /reset", apiCfg.resetServerHitsHandler)
 
 	// Create server
 	server := &http.Server{
