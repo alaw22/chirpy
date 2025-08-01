@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"log"
+	"net/http"
 	"sync/atomic"
 )
 
@@ -29,7 +29,15 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 func (cfg *apiConfig) serverHitsHandler(w http.ResponseWriter, req *http.Request) {
-	body := fmt.Sprintf("Hits: %v",cfg.fileserverHits.Load())
+	body := fmt.Sprintf(`<html>
+  <body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited %d times!</p>
+  </body>
+</html>`,cfg.fileserverHits.Load())
+
+	w.Header().Set("Content-Type","text/html")
+
 	w.WriteHeader(200)
 	w.Write([]byte(body))
 }
@@ -62,8 +70,8 @@ func main(){
 
 	// Register newly defined handlers
 	serveMux.HandleFunc("GET /api/healthz", readinessHandler)
-	serveMux.HandleFunc("GET /api/metrics", apiCfg.serverHitsHandler)
-	serveMux.HandleFunc("POST /api/reset", apiCfg.resetServerHitsHandler)
+	serveMux.HandleFunc("GET /admin/metrics", apiCfg.serverHitsHandler)
+	serveMux.HandleFunc("POST /admin/reset", apiCfg.resetServerHitsHandler)
 
 	// Create server
 	server := &http.Server{
