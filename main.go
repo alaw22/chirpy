@@ -4,50 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync/atomic"
 )
-
-func readinessHandler(w http.ResponseWriter, req *http.Request){
-	
-	body := "OK"
-
-	w.Header().Set("Content-Type","text/plain; charset=utf-8")
-	w.WriteHeader(200)	
-	w.Write([]byte(body))
-
-}
-
-type apiConfig struct {
-	fileserverHits atomic.Int32
-}
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request){
-		cfg.fileserverHits.Add(1)
-		next.ServeHTTP(w, req)
-	})
-}
-
-func (cfg *apiConfig) serverHitsHandler(w http.ResponseWriter, req *http.Request) {
-	body := fmt.Sprintf(`<html>
-  <body>
-    <h1>Welcome, Chirpy Admin</h1>
-    <p>Chirpy has been visited %d times!</p>
-  </body>
-</html>`,cfg.fileserverHits.Load())
-
-	w.Header().Set("Content-Type","text/html")
-
-	w.WriteHeader(200)
-	w.Write([]byte(body))
-}
-
-func (cfg *apiConfig) resetServerHitsHandler(w http.ResponseWriter, req *http.Request) {
-	cfg.fileserverHits.Store(0)
-	w.WriteHeader(200)
-	w.Write([]byte("Successfully reset server hits"))
-}
-
 
 func main(){
 
@@ -70,6 +27,7 @@ func main(){
 
 	// Register newly defined handlers
 	serveMux.HandleFunc("GET /api/healthz", readinessHandler)
+	serveMux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
 	serveMux.HandleFunc("GET /admin/metrics", apiCfg.serverHitsHandler)
 	serveMux.HandleFunc("POST /admin/reset", apiCfg.resetServerHitsHandler)
 
