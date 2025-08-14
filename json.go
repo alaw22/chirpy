@@ -29,7 +29,7 @@ func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{})
 	w.Header().Set("Content-Type","application/json")
 	data, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("Couldn't marshal payload: %w\n",err)
+		log.Printf("Couldn't marshal payload: %v\n",err)
 		w.WriteHeader(500)
 		return
 	}
