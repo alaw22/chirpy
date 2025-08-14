@@ -8,23 +8,20 @@ import (
 )
 
 func replace_profanity(msg string) string{
-	const replacement = "****"
-	var profane_words []string = []string{"kerfuffle","sharbert","fornax"}
-
-	profane_word_indexes := make([]int,0)
+	profane_words := map[string]struct{}{
+		"kerfuffle": {},
+		"sharbert": {},
+		"fornax": {},
+	}
+	
 	split_msg := strings.Split(msg," ")
 
 	for i, word := range split_msg{
-		for _, profane_word := range profane_words{
-			if strings.ToLower(word) == profane_word{
-				profane_word_indexes = append(profane_word_indexes,i)
-				break
-			}
+		loweredWord := strings.ToLower(word)
+
+		if _, ok := profane_words[loweredWord]; ok{
+			split_msg[i] = "****"
 		}
-	}
-	
-	for _, idx := range profane_word_indexes{
-		split_msg[idx] = replacement
 	}
 
 	return strings.Join(split_msg," ")

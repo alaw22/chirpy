@@ -2,9 +2,21 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"log"
 	"net/http"
+	"database/sql"
+	"sync/atomic"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
+
+	"github.com/alaw22/chirpy/internal/database"
 )
+
+type apiConfig struct {
+	fileserverHits atomic.Int32
+	db *database.Queries
+}
 
 func main(){
 
@@ -13,11 +25,28 @@ func main(){
 		port = "8080"
 	)
 
+	// Load environment variables
+	godotenv.Load(".env")
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+
+
+	dbConn, err := sql.Open("postgres",dbURL)
+	if err != nil {
+		log.Fatal("Couldn't establish connection to chirpy db: %w",err)
+	}
+
+
 	// Create http handler
 	serveMux := http.NewServeMux()
 	
 	// Create apiconfig
-	apiCfg := apiConfig{}
+	apiCfg := apiConfig{
+		fileserverHits: atomic.Int32{},
+		db: database.New(dbConn),
+	}
 
 	// FileServer Handler
 	fileServerHandler := http.StripPrefix("/app",http.FileServer(http.Dir(rootPath)))
@@ -40,7 +69,7 @@ func main(){
 	fmt.Printf("Serving files from %s at port %s\n",rootPath,port)
 
 	// Start server
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}
