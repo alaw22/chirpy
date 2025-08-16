@@ -58,11 +58,13 @@ func main(){
 
 	// Register newly defined handlers
 	serveMux.HandleFunc("GET /api/healthz", readinessHandler)
-	serveMux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
 	serveMux.HandleFunc("GET /admin/metrics", apiCfg.serverHitsHandler)
 	serveMux.HandleFunc("POST /admin/reset", apiCfg.resetUsersAndHitsHandler)
 	serveMux.HandleFunc("POST /api/users", apiCfg.createUserHandler)
-	
+	// serveMux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
+	serveMux.HandleFunc("POST /api/chirps", apiCfg.createChirpHandler)
+
+
 	// Create server
 	server := &http.Server{
 		Addr: ":" + port,
