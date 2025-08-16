@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"fmt"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -130,4 +131,35 @@ func (cfg *apiConfig) getAllChirpsHandler(w http.ResponseWriter, req *http.Reque
 	} 
 
 	respondWithJSON(w,200,chirpsInfo)
+}
+
+func (cfg *apiConfig) getChirpHandler(w http.ResponseWriter, req *http.Request) {
+	chirpIDString := req.PathValue("chirpID")
+
+	chirpID, err := uuid.Parse(chirpIDString)
+	if err != nil {
+		respondWithError(w,
+						 508,
+						 fmt.Sprintf("%s isn't a UUID something is really wrong",chirpIDString),
+						 err)
+		return
+	}
+
+	// get chirp with id == chirpID
+	chirp, err := cfg.db.GetChirp(req.Context(), chirpID)
+	if err != nil {
+		respondWithError(w,
+						 404,
+						 "Error in GetChirp(): unable to get chirp",
+						 err)
+		return
+	}
+
+	respondWithJSON(w, 200, chirpInfoFull{
+		ID: chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body: chirp.Body,
+		UserID: chirp.UserID,
+	})
 }
