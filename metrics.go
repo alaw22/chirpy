@@ -14,6 +14,12 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
+// func (cfg *apiConfig) middlewareAdminReset(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request){
+
+// 	})
+// }
+
 func (cfg *apiConfig) serverHitsHandler(w http.ResponseWriter, req *http.Request) {
 	body := fmt.Sprintf(`<html>
   <body>
@@ -28,8 +34,35 @@ func (cfg *apiConfig) serverHitsHandler(w http.ResponseWriter, req *http.Request
 	w.Write([]byte(body))
 }
 
-func (cfg *apiConfig) resetServerHitsHandler(w http.ResponseWriter, req *http.Request) {
+// func (cfg *apiConfig) resetServerHitsHandler(w http.ResponseWriter, req *http.Request) {
+// 	cfg.fileserverHits.Store(0)
+// 	w.WriteHeader(200)
+// 	w.Write([]byte("Successfully reset server hits"))
+// }
+
+func (cfg *apiConfig) resetUsersAndHitsHandler(w http.ResponseWriter, req *http.Request) {
+	// Only local dev access
+	if cfg.platform != "dev"{
+		respondeWithError(w,
+						  403,
+						  "Forbidden",
+						  nil)
+		return
+	}
+
+	// Deleting all users from database
+	err := cfg.db.DeleteAllUsers(req.Context())
+	if err != nil {
+		respondeWithError(w,
+						  505,
+						  "PostgreSQL Error: Couldn't Delete Users.",
+						  err)
+		return
+	}
+
+	// Reset server hits 
 	cfg.fileserverHits.Store(0)
 	w.WriteHeader(200)
-	w.Write([]byte("Successfully reset server hits"))
+	w.Write([]byte("Successfully reset server hits and deleted all users in database"))
+
 }
