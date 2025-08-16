@@ -25,7 +25,7 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, req *http.Request
 	// Read in request body
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
-		respondeWithError(w,
+		respondWithError(w,
 						  501,
 						  "Couldn't read request body",
 						  err)
@@ -37,7 +37,7 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, req *http.Request
 
 	err = json.Unmarshal(data,&email)
 	if err != nil {
-		respondeWithError(w,
+		respondWithError(w,
 						  502,
 						  "Couldn't unmarshal new user data",
 						  err)
@@ -47,7 +47,7 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, req *http.Request
 	// Create user
 	newUser, err := cfg.db.CreateUser(req.Context(),email.Email)
 	if err != nil {
-		respondeWithError(w,
+		respondWithError(w,
 						  503,
 						  "Error in CreateUser(), unable to create new user",
 						  err)

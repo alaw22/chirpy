@@ -43,7 +43,7 @@ func (cfg *apiConfig) serverHitsHandler(w http.ResponseWriter, req *http.Request
 func (cfg *apiConfig) resetUsersAndHitsHandler(w http.ResponseWriter, req *http.Request) {
 	// Only local dev access
 	if cfg.platform != "dev"{
-		respondeWithError(w,
+		respondWithError(w,
 						  403,
 						  "Forbidden",
 						  nil)
@@ -53,7 +53,7 @@ func (cfg *apiConfig) resetUsersAndHitsHandler(w http.ResponseWriter, req *http.
 	// Deleting all users from database
 	err := cfg.db.DeleteAllUsers(req.Context())
 	if err != nil {
-		respondeWithError(w,
+		respondWithError(w,
 						  505,
 						  "PostgreSQL Error: Couldn't Delete Users.",
 						  err)

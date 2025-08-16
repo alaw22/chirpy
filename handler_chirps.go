@@ -10,6 +10,14 @@ import (
 	"github.com/alaw22/chirpy/internal/database"
 )
 
+type chirpInfoFull struct {
+	ID uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body string `json:"body"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
 func replace_profanity(msg string) string{
 	profane_words := map[string]struct{}{
 		"kerfuffle": {},
@@ -36,27 +44,14 @@ func replace_profanity(msg string) string{
 func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	
-	type chirpInfoFull struct {
-		ID uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Body string `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
-	}
-	
 	type chirpInfoStripped struct {
 		Body string `json:"body"`
 		UserID uuid.UUID `json:"user_id"`
 	}
 
-	// type cleanChirp struct {
-	// 	Clean_Body string `json:"cleaned_body"`
-	// }
-	
-
 	dat, err := io.ReadAll(req.Body)
 	if err != nil {
-		respondeWithError(w,
+		respondWithError(w,
 						  501,
 						  "Couldn't read request body",
 						  err)
@@ -70,7 +65,7 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 	err = json.Unmarshal(dat,&chirp)
 	if err != nil {
 
-		respondeWithError(w,
+		respondWithError(w,
 						  502,
 						  "Couldn't unpack json to chirpBody{}",
 						  err)
@@ -79,7 +74,7 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 	}
 
 	if len(chirp.Body) > 140 {
-		respondeWithError(w,
+		respondWithError(w,
 						  400,
 						  "Chirp is too long",
 						  nil)
@@ -94,7 +89,7 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 		// Store chirp before responding
 		chirpEntry, err := cfg.db.CreateChirp(req.Context(), chirpParams)
 		if err != nil {
-			respondeWithError(w,
+			respondWithError(w,
 							  506,
 							  "Couldn't create chirp",
 							  err)
@@ -112,4 +107,27 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 		
 	}
 
+}
+
+func (cfg *apiConfig) getAllChirpsHandler(w http.ResponseWriter, req *http.Request) {
+	chirps, err := cfg.db.GetAllChirps(req.Context())
+	if err != nil {
+		respondWithError(w,
+						  507,
+						  "Error in GetAllChirps(): Couldn't get all chirps",
+						  err)
+		return
+	}
+
+	// Unpack into encodable slice of structs 
+	chirpsInfo := make([]chirpInfoFull,len(chirps))
+	for i, chirp := range chirps{
+		chirpsInfo[i].ID = chirp.ID
+		chirpsInfo[i].CreatedAt = chirp.CreatedAt
+		chirpsInfo[i].UpdatedAt = chirp.UpdatedAt
+		chirpsInfo[i].Body = chirp.Body
+		chirpsInfo[i].UserID = chirp.UserID
+	} 
+
+	respondWithJSON(w,200,chirpsInfo)
 }
