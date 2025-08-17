@@ -6,13 +6,17 @@ import (
 	"net/http"
 	"encoding/json"
 	"github.com/google/uuid"
+
+	"github.com/alaw22/chirpy/internal/auth"
+	"github.com/alaw22/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, req *http.Request){
 	defer req.Body.Close()
 
-	type userEmail struct{
+	type userCredentials struct{
 		Email string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	type userAccountInfo struct {
@@ -33,24 +37,38 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, req *http.Request
 	}
 
 	// get email from request
-	email := userEmail{}
+	creds := userCredentials{}
 
-	err = json.Unmarshal(data,&email)
+	err = json.Unmarshal(data,&creds)
 	if err != nil {
 		respondWithError(w,
-						  502,
-						  "Couldn't unmarshal new user data",
-						  err)
+						 502,
+						 "Couldn't unmarshal new user data",
+						 err)
 		return 
 	}
 
-	// Create user
-	newUser, err := cfg.db.CreateUser(req.Context(),email.Email)
+	hashedPassword, err := auth.HashPassword(creds.Password)
 	if err != nil {
 		respondWithError(w,
-						  503,
-						  "Error in CreateUser(), unable to create new user",
-						  err)
+						 510,
+						 "Couldn't hash password",
+						 err)
+		return
+	}
+
+	// Create user
+	newUser, err := cfg.db.CreateUser(req.Context(),
+									  database.CreateUserParams{
+										Email: creds.Email,
+										HashedPassword: hashedPassword,
+									  })
+
+	if err != nil {
+		respondWithError(w,
+						 503,
+						 "Error in CreateUser(), unable to create new user",
+						 err)
 		return
 	}
 
