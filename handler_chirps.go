@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 	"github.com/google/uuid"
+	
 	"github.com/alaw22/chirpy/internal/database"
+	"github.com/alaw22/chirpy/internal/auth"
 )
 
 type chirpInfoFull struct {
@@ -47,8 +49,27 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 	
 	type chirpInfoStripped struct {
 		Body string `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
 	}
+
+	// Authenticate user
+	tokenString, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w,
+					     401,
+						 "Unauthorized",
+						 err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(tokenString, cfg.secretKey)
+	if err != nil {
+		respondWithError(w,
+						 401,
+						 "Unauthorized user",
+						 err)
+		return
+	}
+
 
 	dat, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -84,8 +105,10 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 		// Create chirp params struct with cleaned chirp body
 		chirpParams := database.CreateChirpParams{
 			Body: replace_profanity(chirp.Body),
-			UserID: chirp.UserID,
+			UserID: userID,
 		}
+
+		fmt.Println("This is the user ID:",chirpParams.UserID)
 
 		// Store chirp before responding
 		chirpEntry, err := cfg.db.CreateChirp(req.Context(), chirpParams)

@@ -10,6 +10,8 @@ import (
 	"github.com/alaw22/chirpy/internal/auth"
 )
 
+const defaultExpirationTime = 3600 // seconds -> hour
+
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
@@ -17,6 +19,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 	type userCredentials struct{
 		Password string `json:"password"`
 		Email string `json:"email"`
+		ExpiresInSeconds int64 `json:"expires_in_seconds"`
 	}
 
 	type userAccountInfo struct {
@@ -24,6 +27,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email string `json:"email"`
+		TokenString string `json:"token"`
 	}
 
 	data, err := io.ReadAll(req.Body)
@@ -46,6 +50,16 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	var expiresIn time.Duration
+
+	if userCreds.ExpiresInSeconds == 0{
+		expiresIn = time.Second*time.Duration(defaultExpirationTime)
+	} else if userCreds.ExpiresInSeconds > defaultExpirationTime{
+		expiresIn = time.Second*time.Duration(defaultExpirationTime)
+	} else {
+		expiresIn = time.Second*time.Duration(userCreds.ExpiresInSeconds)
+	}
+
 	user, err := cfg.db.GetUserFromEmail(req.Context(),userCreds.Email)
 	if err != nil {
 		respondWithError(w,
@@ -64,11 +78,22 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Create token
+	tokenString, err := auth.MakeJWT(user.ID, cfg.secretKey, expiresIn)
+	if err != nil {
+		respondWithError(w,
+						 514,
+						 "Unable to make JWT",
+						 err)
+		return
+	}	
+
 	respondWithJSON(w,200,userAccountInfo{
 		ID: user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email: user.Email,
+		TokenString: tokenString,
 	})
 
 }

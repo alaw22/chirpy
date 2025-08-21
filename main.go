@@ -17,6 +17,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db *database.Queries
 	platform string
+	secretKey string
 }
 
 func main(){
@@ -32,6 +33,12 @@ func main(){
 	if dbURL == "" {
 		log.Fatal("DB_URL must be set")
 	}
+	
+	secretKey := os.Getenv("SECRET_STRING")
+	if secretKey == ""{
+		log.Fatal("Secret key is empty cannot provide JWTs without key")
+	}
+
 
 
 	dbConn, err := sql.Open("postgres",dbURL)
@@ -39,6 +46,7 @@ func main(){
 		log.Fatal("Couldn't establish connection to chirpy db: %w",err)
 	}
 
+	
 
 	// Create http handler
 	serveMux := http.NewServeMux()
@@ -48,6 +56,7 @@ func main(){
 		fileserverHits: atomic.Int32{},
 		db: database.New(dbConn),
 		platform: os.Getenv("PLATFORM"),
+		secretKey: secretKey,
 	}
 
 	// FileServer Handler
