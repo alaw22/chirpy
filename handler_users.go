@@ -87,3 +87,96 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, req *http.Request
 
 
 }
+
+func (cfg *apiConfig) updateUserHandler(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	
+	accessTokenString, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w,
+						 401,
+						 "Most likely a malformed token header",
+						 err)
+		return
+	}
+
+	// Validate user
+	userID, err := auth.ValidateJWT(accessTokenString, cfg.secretKey)
+	if err != nil{
+		respondWithError(w,
+						 401,
+						 "Unable to validate jwt in user update",
+						 err)
+		return
+	}
+
+	type newUserCredentials struct{
+		NewEmail string `json:"email"`
+		NewPassword string `json:"password"`
+	}
+
+	type userAccountInfo struct {
+		ID uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Email string `json:"email"`
+	}
+
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		respondWithError(w,
+						 500,
+						 "Unable to read request body",
+						 err)
+		return
+	}
+
+	newUserCreds := newUserCredentials{}
+
+	err = json.Unmarshal(data, &newUserCreds)
+	if err != nil{
+		respondWithError(w,
+						 400,
+						 "Unable to unmarshal new user credentials",
+						 err)
+		return
+	}
+
+	newHashedPassword, err := auth.HashPassword(newUserCreds.NewPassword)
+	if err != nil{
+		respondWithError(w,
+						 500,
+						 "Unable to hash new password",
+						 err)
+		return
+	}
+
+	updatedUserParams := database.UpdateUserEmailAndPasswordParams{
+		Email: newUserCreds.NewEmail,
+		HashedPassword: newHashedPassword,
+		ID: userID,
+	}
+
+	// Update credentials
+	updatedUser, err := cfg.db.UpdateUserEmailAndPassword(req.Context(),updatedUserParams)
+
+	if err != nil{
+		respondWithError(w,
+						 500,
+						 "Unable to update user credentials",
+						 err)
+		return
+	}
+
+
+	updatedUserInfo := userAccountInfo{
+		ID: updatedUser.ID,
+		CreatedAt: updatedUser.CreatedAt,
+		UpdatedAt: updatedUser.UpdatedAt,
+		Email: updatedUser.Email,
+	}
+
+	respondWithJSON(w,200,updatedUserInfo)
+
+
+}
