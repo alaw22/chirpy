@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"github.com/alaw22/chirpy/internal/auth"
+	"github.com/alaw22/chirpy/internal/database"
 )
-
-const defaultExpirationTime = 3600 // seconds -> hour
 
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
@@ -19,7 +18,6 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 	type userCredentials struct{
 		Password string `json:"password"`
 		Email string `json:"email"`
-		ExpiresInSeconds int64 `json:"expires_in_seconds"`
 	}
 
 	type userAccountInfo struct {
@@ -27,13 +25,14 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email string `json:"email"`
-		TokenString string `json:"token"`
+		AccessTokenString string `json:"token"`
+		RefreshTokenString string `json:"refresh_token"`
 	}
 
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		respondWithError(w,
-		                 515,
+		                 500,
 						 "Error in io.ReadAll",
 						 err)
 		return
@@ -44,20 +43,10 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 	err = json.Unmarshal(data, &userCreds)
 	if err != nil {
 		respondWithError(w,
-						 511,
+						 500,
 						 "Error in loginHandler: Unable to unmarshal request body",
 						 err)
 		return
-	}
-
-	var expiresIn time.Duration
-
-	if userCreds.ExpiresInSeconds == 0{
-		expiresIn = time.Second*time.Duration(defaultExpirationTime)
-	} else if userCreds.ExpiresInSeconds > defaultExpirationTime{
-		expiresIn = time.Second*time.Duration(defaultExpirationTime)
-	} else {
-		expiresIn = time.Second*time.Duration(userCreds.ExpiresInSeconds)
 	}
 
 	user, err := cfg.db.GetUserFromEmail(req.Context(),userCreds.Email)
@@ -78,22 +67,47 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Create token
-	tokenString, err := auth.MakeJWT(user.ID, cfg.secretKey, expiresIn)
+	// Create access token
+	tokenString, err := auth.MakeJWT(user.ID, cfg.secretKey, defaultExpirationTime)
 	if err != nil {
 		respondWithError(w,
-						 514,
+						 500,
 						 "Unable to make JWT",
 						 err)
 		return
-	}	
+	}
+
+	// Create refresh token
+	refreshTokenString, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w,
+						 500,
+						 "Unable to Create refresh token string",
+						 err)
+		return
+	}
+
+	// Store refresh token
+	_, err = cfg.db.CreateRefreshToken(req.Context(), database.CreateRefreshTokenParams{
+																  	Token: refreshTokenString,
+																  	UserID: user.ID,
+																  })
+
+	if err != nil {
+		respondWithError(w,
+						 500,
+						 "Unable to store refresh token",
+						 err)
+		return
+	}
 
 	respondWithJSON(w,200,userAccountInfo{
 		ID: user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email: user.Email,
-		TokenString: tokenString,
+		AccessTokenString: tokenString,
+		RefreshTokenString: refreshTokenString,
 	})
 
 }

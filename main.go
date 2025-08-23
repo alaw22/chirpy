@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"log"
+	"time"
 	"net/http"
 	"database/sql"
 	"sync/atomic"
@@ -19,6 +20,8 @@ type apiConfig struct {
 	platform string
 	secretKey string
 }
+
+const defaultExpirationTime = time.Second*3600 // seconds -> hour
 
 func main(){
 
@@ -74,6 +77,8 @@ func main(){
 	serveMux.HandleFunc("GET /api/chirps", apiCfg.getAllChirpsHandler)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.getChirpHandler)
 	serveMux.HandleFunc("POST /api/login", apiCfg.loginHandler)
+	serveMux.HandleFunc("POST /api/refresh", apiCfg.refreshHandler)
+	serveMux.HandleFunc("POST /api/revoke", apiCfg.revokeRefreshHandler)
 
 	// Create server
 	server := &http.Server{
