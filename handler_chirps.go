@@ -162,7 +162,7 @@ func (cfg *apiConfig) getChirpHandler(w http.ResponseWriter, req *http.Request) 
 	chirpID, err := uuid.Parse(chirpIDString)
 	if err != nil {
 		respondWithError(w,
-						 508,
+						 500,
 						 fmt.Sprintf("%s isn't a UUID something is really wrong",chirpIDString),
 						 err)
 		return
@@ -185,4 +185,69 @@ func (cfg *apiConfig) getChirpHandler(w http.ResponseWriter, req *http.Request) 
 		Body: chirp.Body,
 		UserID: chirp.UserID,
 	})
+}
+
+func (cfg *apiConfig) deleteChirpHandler(w http.ResponseWriter, req *http.Request) {
+	accessTokenString, err := auth.GetBearerToken(req.Header)
+	if err != nil{
+		respondWithError(w,
+						 400,
+						 "Unable to get access token",
+						 err)
+		return
+	}
+	
+	
+	userID, err := auth.ValidateJWT(accessTokenString, cfg.secretKey)
+	if err != nil{
+		respondWithError(w,
+						 401,
+						 "Not a valid user",
+						 err)
+		return
+	}
+
+	chirpIDString := req.PathValue("chirpID")
+
+	chirpID, err := uuid.Parse(chirpIDString)
+	if err != nil {
+		respondWithError(w,
+						 500,
+						 fmt.Sprintf("%s isn't a UUID something is really wrong",chirpIDString),
+						 err)
+		return
+	}
+	
+	// get chirp with id == chirpID
+	chirp, err := cfg.db.GetChirp(req.Context(), chirpID)
+	if err != nil {
+		respondWithError(w,
+						 404,
+						 "Error in GetChirp(): unable to get chirp",
+						 err)
+		return
+	}
+
+	// check author is the same as the authenticated user. Otherwise known as 
+	// authorization
+	if chirp.UserID != userID {
+			respondWithError(w,
+							403,
+							"You are not the author of the chirp you are trying to delete",
+							err)
+		return		
+	}
+
+	// Delete chirp
+	err = cfg.db.DeleteChirp(req.Context(), chirp.ID)
+	if err != nil{
+		respondWithError(w,
+						 500,
+						 "Unable to delete chirp",
+						 err)
+		return
+	}
+
+	w.WriteHeader(204)
+
 }
