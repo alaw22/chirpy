@@ -24,6 +24,7 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, req *http.Request
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email string `json:"email"`
+		IsChirpyRed bool `json:"is_chirpy_red"`
 	}
 
 	// Read in request body
@@ -78,6 +79,7 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, req *http.Request
 		CreatedAt: newUser.CreatedAt,
 		UpdatedAt: newUser.UpdatedAt,
 		Email: newUser.Email,
+		IsChirpyRed: newUser.IsChirpyRed,
 	}
 
 	// Marshal new data to bytes
@@ -120,6 +122,7 @@ func (cfg *apiConfig) updateUserHandler(w http.ResponseWriter, req *http.Request
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email string `json:"email"`
+		IsChirpyRed bool `json:"is_chirpy_red"`
 	}
 
 	data, err := io.ReadAll(req.Body)
@@ -174,9 +177,71 @@ func (cfg *apiConfig) updateUserHandler(w http.ResponseWriter, req *http.Request
 		CreatedAt: updatedUser.CreatedAt,
 		UpdatedAt: updatedUser.UpdatedAt,
 		Email: updatedUser.Email,
+		IsChirpyRed: updatedUser.IsChirpyRed,
 	}
 
 	respondWithJSON(w,200,updatedUserInfo)
 
+
+}
+
+
+func (cfg *apiConfig) upgradeUserHandler(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+
+	// Webhook struct
+	type upgradeRequest struct {
+		Event string `json:"event"`
+		Data struct{
+			UserID string `json:"user_id"`
+		} `json:"data"`
+	}
+
+	data, err := io.ReadAll(req.Body)
+	if err != nil{
+		respondWithError(w,
+						 400,
+						 "Unable to read request from webhook",
+						 err)
+		return
+	}
+
+	upgrade_req := upgradeRequest{}
+
+	err = json.Unmarshal(data,&upgrade_req)
+	if err != nil{
+		respondWithError(w,
+						 400,
+						 "Ill formatted request in webhook",
+						 err)
+		return
+	}
+
+	if upgrade_req.Event != "user.upgraded" {
+		w.WriteHeader(204)
+		return
+	}
+
+	userID, err := uuid.Parse(upgrade_req.Data.UserID)
+	if err != nil{
+		respondWithError(w,
+						 400,
+						 "Unable to convert provided user_id to UUID",
+						 err)
+		return
+	}
+
+	// upgrade user
+	err = cfg.db.UpgradeUser(req.Context(), userID)
+	if err != nil{
+		respondWithError(w,
+						 404,
+						 "User cannot be found",
+						 err)
+		return
+	}
+
+	w.WriteHeader(204)
+	
 
 }

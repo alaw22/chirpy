@@ -27,6 +27,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 		Email string `json:"email"`
 		AccessTokenString string `json:"token"`
 		RefreshTokenString string `json:"refresh_token"`
+		IsChirpyRed bool `json:"is_chirpy_red"`
 	}
 
 	data, err := io.ReadAll(req.Body)
@@ -108,6 +109,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, req *http.Request) {
 		Email: user.Email,
 		AccessTokenString: tokenString,
 		RefreshTokenString: refreshTokenString,
+		IsChirpyRed: user.IsChirpyRed,
 	})
 
 }
