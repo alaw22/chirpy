@@ -19,6 +19,7 @@ type apiConfig struct {
 	db *database.Queries
 	platform string
 	secretKey string
+	polkaAPIKey string
 }
 
 const defaultExpirationTime = time.Second*3600 // seconds -> hour
@@ -42,6 +43,10 @@ func main(){
 		log.Fatal("Secret key is empty cannot provide JWTs without key")
 	}
 
+	polkaAPIKey := os.Getenv("POLKA_KEY")
+	if polkaAPIKey == ""{
+		log.Fatal("Polka api key is empty. Cannot verify transactions")
+	}
 
 
 	dbConn, err := sql.Open("postgres",dbURL)
@@ -60,6 +65,7 @@ func main(){
 		db: database.New(dbConn),
 		platform: os.Getenv("PLATFORM"),
 		secretKey: secretKey,
+		polkaAPIKey: polkaAPIKey,
 	}
 
 	// FileServer Handler
@@ -81,6 +87,7 @@ func main(){
 	serveMux.HandleFunc("POST /api/login", apiCfg.loginHandler)
 	serveMux.HandleFunc("POST /api/refresh", apiCfg.refreshHandler)
 	serveMux.HandleFunc("POST /api/revoke", apiCfg.revokeRefreshHandler)
+	// how do I make this idempotent?
 	serveMux.HandleFunc("POST /api/polka/webhooks", apiCfg.upgradeUserHandler)
 
 	// Create server

@@ -197,6 +197,21 @@ func (cfg *apiConfig) upgradeUserHandler(w http.ResponseWriter, req *http.Reques
 		} `json:"data"`
 	}
 
+	// Verify apikey
+	sentKey, err := auth.GetAPIKey(req.Header)
+	if err != nil{
+		respondWithError(w,
+						 400,
+						 "Unable to parse api key for some reason",
+						 err)
+		return
+	}
+
+	if sentKey != cfg.polkaAPIKey {
+		w.WriteHeader(401)
+		return
+	}
+
 	data, err := io.ReadAll(req.Body)
 	if err != nil{
 		respondWithError(w,
