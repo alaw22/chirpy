@@ -74,7 +74,7 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 	dat, err := io.ReadAll(req.Body)
 	if err != nil {
 		respondWithError(w,
-						  501,
+						  500,
 						  "Couldn't read request body",
 						  err)
 		return
@@ -88,18 +88,18 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 	if err != nil {
 
 		respondWithError(w,
-						  502,
-						  "Couldn't unpack json to chirpBody{}",
-						  err)
+						 500,
+						 "Couldn't unpack json to chirpBody{}",
+						 err)
 						  
 		return
 	}
 
 	if len(chirp.Body) > 140 {
 		respondWithError(w,
-						  400,
-						  "Chirp is too long",
-						  nil)
+						 400,
+						 "Chirp is too long",
+						 nil)
 	} else {
 
 		// Create chirp params struct with cleaned chirp body
@@ -108,15 +108,13 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 			UserID: userID,
 		}
 
-		fmt.Println("This is the user ID:",chirpParams.UserID)
-
 		// Store chirp before responding
 		chirpEntry, err := cfg.db.CreateChirp(req.Context(), chirpParams)
 		if err != nil {
 			respondWithError(w,
-							  506,
-							  "Couldn't create chirp",
-							  err)
+							500,
+							"Couldn't create chirp",
+							err)
 			return
 		}
 
@@ -134,14 +132,44 @@ func (cfg *apiConfig) createChirpHandler(w http.ResponseWriter, req *http.Reques
 }
 
 func (cfg *apiConfig) getAllChirpsHandler(w http.ResponseWriter, req *http.Request) {
-	chirps, err := cfg.db.GetAllChirps(req.Context())
-	if err != nil {
-		respondWithError(w,
-						  507,
-						  "Error in GetAllChirps(): Couldn't get all chirps",
-						  err)
-		return
+	var chirps []database.Chirp
+	var err error
+	var authorID uuid.UUID
+
+	// check to see if an author_id was passed to get all chirps of a author author_id
+	authorIDString := req.URL.Query().Get("author_id")
+	if authorIDString != ""{
+
+		authorID, err = uuid.Parse(authorIDString)
+		if err != nil{
+			respondWithError(w,
+							 400,
+							 "Unable to create uuid.UUID from author ID provided",
+							 err)
+			return
+		}
+
+		chirps, err = cfg.db.GetAllChirpsByUser(req.Context(), authorID)
+		if err != nil {
+			respondWithError(w,
+							 500,
+							 "Error in GetAllChirpsByUser(): Couldn't get chirps",
+							 err)
+			return
+		}
+		
+	} else {
+		
+		chirps, err = cfg.db.GetAllChirps(req.Context())
+		if err != nil {
+			respondWithError(w,
+							 500,
+							 "Error in GetAllChirps(): Couldn't get all chirps",
+							 err)
+			return
+		}
 	}
+
 
 	// Unpack into encodable slice of structs 
 	chirpsInfo := make([]chirpInfoFull,len(chirps))
