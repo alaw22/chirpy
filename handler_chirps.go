@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"sort"
 	"github.com/google/uuid"
 	
 	"github.com/alaw22/chirpy/internal/database"
@@ -169,6 +170,14 @@ func (cfg *apiConfig) getAllChirpsHandler(w http.ResponseWriter, req *http.Reque
 			return
 		}
 	}
+
+	sortQ := req.URL.Query().Get("sort")
+	if sortQ == "asc" {
+		sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)})
+	} else if sortQ == "desc" {
+		sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.After(chirps[j].CreatedAt)})
+	}
+	
 
 
 	// Unpack into encodable slice of structs 

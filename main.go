@@ -87,7 +87,6 @@ func main(){
 	serveMux.HandleFunc("POST /api/login", apiCfg.loginHandler)
 	serveMux.HandleFunc("POST /api/refresh", apiCfg.refreshHandler)
 	serveMux.HandleFunc("POST /api/revoke", apiCfg.revokeRefreshHandler)
-	// how do I make this idempotent?
 	serveMux.HandleFunc("POST /api/polka/webhooks", apiCfg.upgradeUserHandler)
 
 	// Create server
